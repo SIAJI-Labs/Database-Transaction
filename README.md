@@ -115,3 +115,27 @@ Final result is
     price: 350000
 }
 ```
+
+## Request
+
+All request is run on api environment
+
+### Product
+
+- Endpoint: `http://127.0.0.1:8000/api/product`,
+- Method: `POST`,
+- Request Body:
+```
+name:Sepatu
+qty:20
+price:350000
+```
+
+### Transaction
+- Endpoint: `http://127.0.0.1:8000/api/transaction`,
+- Method: `POST`,
+- Request Body:
+```
+product_id:1
+qty:2
+```
