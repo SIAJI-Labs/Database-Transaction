@@ -31,7 +31,7 @@ $query_two->save();
 
 - Let say this is our product data
 
-```json
+```text
 {
     id: 1,
     name: "Sepatu",
@@ -43,7 +43,7 @@ $query_two->save();
 then, when we run our function without database transaction, and we make an error on `$query_two`,
 
 Example request
-```json
+```text
 {
     product_id: 1,
     qty: 2
@@ -64,7 +64,7 @@ $query_two->save();
 
 The result is on `$query_two` we got an error where `price` didn't have default value, but our `qty` on `$query_one` is already decrease
 
-```json
+```text
 {
     id: 1,
     name: "Sepatu",
@@ -75,7 +75,7 @@ The result is on `$query_two` we got an error where `price` didn't have default 
 
 But we don't have any data on `transactions` table. So now we will use database transaction with same code and request. We still face an error, but when we check the products table data, no changes where made
 
-```json
+```text
 {
     id: 1,
     name: "Sepatu",
@@ -100,7 +100,7 @@ $query_two->save();
 
 Final result is
 
-```json
+```text
 {
     // product table
     id: 1,
