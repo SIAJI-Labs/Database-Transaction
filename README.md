@@ -7,56 +7,111 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
-## About Laravel
+## Database Transaction on Laravel
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+With Database Transaction, database will not save changes when there is an error on other query result. Example
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- There is 2 query, one is for update Product QTY and another one is for add to transaction table. Let say our query is
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+```php
+$query_one = \App\Models\Product::findOrFail($request->product_id);
+$query_one->qty -= $request->qty;
+$query_one->save();
+```
 
-## Learning Laravel
+And our second query is
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+```php
+$query_two = new \App\Models\Transaction();
+$query_two->product_id = $query_one->id;
+$query_two->qty = $request->qty;
+$query_two->price = $query_one->price;
+$query_two->save();
+```
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 1500 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+- Let say this is our product data
 
-## Laravel Sponsors
+```json
+{
+    id: 1,
+    name: "Sepatu",
+    qty: 20,
+    price: 350000
+}
+```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the Laravel [Patreon page](https://patreon.com/taylorotwell).
+then, when we run our function without database transaction, and we make an error on `$query_two`,
 
-### Premium Partners
+Example request
+```json
+{
+    product_id: 1,
+    qty: 2
+}
+```
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Cubet Techno Labs](https://cubettech.com)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[Many](https://www.many.co.uk)**
-- **[Webdock, Fast VPS Hosting](https://www.webdock.io/en)**
-- **[DevSquad](https://devsquad.com)**
-- **[Curotec](https://www.curotec.com/)**
-- **[OP.GG](https://op.gg)**
+```php
+$query_one = \App\Models\Product::findOrFail($request->product_id);
+$query_one->qty -= $request->qty;
+$query_one->save();
 
-## Contributing
+$query_two = new \App\Models\Transaction();
+$query_two->product_id = $query_one->id;
+$query_two->qty = $request->qty;
+// $query_two->price = $query_one->price;
+$query_two->save();
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+The result is on `$query_two` we got an error where `price` didn't have default value, but our `qty` on `$query_one` is already decrease
 
-## Code of Conduct
+```json
+{
+    id: 1,
+    name: "Sepatu",
+    qty: 18,
+    price: 350000
+}
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+But we don't have any data on `transactions` table. So now we will use database transaction with same code and request. We still face an error, but when we check the products table data, no changes where made
 
-## Security Vulnerabilities
+```json
+{
+    id: 1,
+    name: "Sepatu",
+    qty: 18, //remember our last request? qty is decreased by 2, but after an error with database transaction, the value still at 18 => that means nothing changed
+    price: 350000
+}
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+When we run on query below, we will see changes made
 
-## License
+```php
+$query_one = \App\Models\Product::findOrFail($request->product_id);
+$query_one->qty -= $request->qty;
+$query_one->save();
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+$query_two = new \App\Models\Transaction();
+$query_two->product_id = $query_one->id;
+$query_two->qty = $request->qty;
+$query_two->price = $query_one->price;
+$query_two->save();
+```
+
+Final result is
+
+```json
+{
+    // product table
+    id: 1,
+    name: "Sepatu",
+    qty: 16,
+    price: 350000
+}, {
+    // transaction table
+    id: 1,
+    product_id: 1,
+    qty: 2,
+    price: 350000
+}
+```
